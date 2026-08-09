@@ -1,0 +1,29 @@
+name: Check PS Store Prices
+
+on:
+  schedule:
+    # Runs in UTC. 30 3 = 9:00 AM IST, 30 11 = 5:00 PM IST
+    - cron: '30 3 * * *'
+    - cron: '30 11 * * *'
+  workflow_dispatch: {}   # lets you trigger it manually from the Actions tab to test
+
+jobs:
+  check-prices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run price checker
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python check_prices.py
