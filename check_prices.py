@@ -12,7 +12,7 @@ Requires env vars:  TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 
 import os
 import re
-import json
+import html
 import sys
 import time
 import requests
@@ -50,19 +50,6 @@ def parse_price_string(value):
         return None
 
 
-def find_price_blocks(node, found):
-    """Recursively search the __NEXT_DATA__ JSON for objects that look like price info."""
-    if isinstance(node, dict):
-        keys_lower = {k.lower() for k in node.keys()}
-        if {"baseprice", "discountedprice"} <= keys_lower or {"basePrice", "discountedPrice"} <= set(node.keys()):
-            found.append(node)
-        for v in node.values():
-            find_price_blocks(v, found)
-    elif isinstance(node, list):
-        for item in node:
-            find_price_blocks(item, found)
-
-
 def get_title(soup):
     og_title = soup.find("meta", property="og:title")
     if og_title and og_title.get("content"):
@@ -84,31 +71,27 @@ def fetch_game_info(url):
     soup = BeautifulSoup(resp.text, "html.parser")
     title = get_title(soup)
 
-    script_tag = soup.find("script", id="__NEXT_DATA__")
+    # PS Store renders one of two patterns in the page text for the main
+    # product's price block:
+    #   Discounted:      "Discounted from original price of Rs 4,999 Rs 2,499"
+    #   Not discounted:  "Rs 2,499"  (just one price, no "original price of" text)
+    page_text = soup.get_text(separator=" ", strip=True)
+
     base = discounted = None
 
-    if script_tag and script_tag.string:
-        try:
-            data = json.loads(script_tag.string)
-            blocks = []
-            find_price_blocks(data, blocks)
-            for b in blocks:
-                bp = b.get("basePrice") or b.get("baseprice")
-                dp = b.get("discountedPrice") or b.get("discountedprice")
-                bp_val = parse_price_string(bp)
-                dp_val = parse_price_string(dp)
-                if bp_val is not None and dp_val is not None:
-                    base, discounted = bp_val, dp_val
-                    break
-        except (json.JSONDecodeError, TypeError) as e:
-            print(f"[WARN] Could not parse __NEXT_DATA__ for {url}: {e}")
-
-    # Fallback: regex for a plain "Rs 1,234" or "₹1,234" price on the page
-    if discounted is None:
-        m = re.search(r"(?:Rs|₹)\s?([\d,]+)", resp.text)
-        if m:
-            discounted = parse_price_string(m.group(1))
-            base = discounted  # no discount info available in fallback mode
+    m = re.search(
+        r"Discounted from original price of\s*(?:Rs\.?|₹)\s?([\d,]+)\s*(?:Rs\.?|₹)\s?([\d,]+)",
+        page_text,
+    )
+    if m:
+        base = parse_price_string(m.group(1))
+        discounted = parse_price_string(m.group(2))
+    else:
+        # Not on sale (or free/subscription-only) - grab the first plain price
+        m2 = re.search(r"(?:Rs\.?|₹)\s?([\d,]+)", page_text)
+        if m2:
+            discounted = parse_price_string(m2.group(1))
+            base = discounted
 
     if discounted is None:
         print(f"[ERROR] Could not extract price for {url}")
@@ -155,8 +138,11 @@ def send_telegram_message(text):
 
 
 def format_deal_line(info):
+    # Escape title for Telegram's HTML parse_mode - unescaped "&", "<", ">"
+    # (e.g. titles like "PS4 & PS5") cause Telegram to reject the whole message.
+    safe_title = html.escape(info["title"])
     return (
-        f"🎮 <b>{info['title']}</b>\n"
+        f"🎮 <b>{safe_title}</b>\n"
         f"   Actual: ₹{info['base']:,.0f}  |  Now: ₹{info['discounted']:,.0f}  "
         f"({info['discount_pct']}% off)\n"
         f"   {info['url']}"
