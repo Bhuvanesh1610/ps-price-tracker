@@ -71,38 +71,40 @@ def fetch_game_info(url):
     soup = BeautifulSoup(resp.text, "html.parser")
     title = get_title(soup)
 
-    # PS Store renders one of two patterns in the page text for the main
-    # product's price block:
-    #   Discounted:      "Discounted from original price of Rs 4,999 Rs 2,499"
-    #   Not discounted:  "Rs 2,499"  (just one price, no "original price of" text)
     page_text = soup.get_text(separator=" ", strip=True)
+
+    # Scope the search to the MAIN product's own price block, starting at its
+    # title and ending before the "Editions:" section. Without this, a price
+    # or discount belonging to a different edition/add-on further down the
+    # same page can get picked up by mistake.
+    h1 = soup.find("h1")
+    anchor = h1.get_text(strip=True) if h1 else title
+    start_idx = page_text.find(anchor) if anchor else -1
+    if start_idx == -1:
+        start_idx = 0
+    end_idx = page_text.find("Editions:", start_idx)
+    if end_idx == -1 or end_idx <= start_idx:
+        end_idx = start_idx + 2000
+    window = page_text[start_idx:end_idx]
 
     base = discounted = None
 
-    # Discounted case: "Rs 973Discounted from original price of Rs 3,246Rs 3,246"
+    # Discounted case: "Rs 973 Discounted from original price of Rs 3,246 Rs 3,246"
     # -> discounted price appears BEFORE the phrase, original price AFTER it.
+    # (Whitespace between the price and the phrase varies, so \s* handles both.)
     m = re.search(
-        r"(?:Rs\.?|₹)\s?([\d,]+)Discounted from original price of\s*(?:Rs\.?|₹)\s?([\d,]+)",
-        page_text,
+        r"(?:Rs\.?|₹)\s?([\d,]+)\s*Discounted from original price of\s*(?:Rs\.?|₹)\s?([\d,]+)",
+        window,
     )
     if m:
         discounted = parse_price_string(m.group(1))
         base = parse_price_string(m.group(2))
     else:
         # Not on sale - just a single plain price shown, e.g. "Rs 2,499"
-        m2 = re.search(r"(?:Rs\.?|₹)\s?([\d,]+)", page_text)
+        m2 = re.search(r"(?:Rs\.?|₹)\s?([\d,]+)", window)
         if m2:
             discounted = parse_price_string(m2.group(1))
             base = discounted
-
-    # --- TEMPORARY DEBUG: helps diagnose why some sales aren't detected ---
-    has_phrase = "Discounted from original price" in page_text
-    print(f"    [debug] response_len={len(resp.text)} discount_phrase_present={has_phrase}")
-    if has_phrase:
-        idx = page_text.find("Discounted from original price")
-        snippet = page_text[max(0, idx - 40): idx + 80]
-        print(f"    [debug] snippet: ...{snippet}...")
-    # --- END DEBUG ---
 
     if discounted is None:
         print(f"[ERROR] Could not extract price for {url}")
