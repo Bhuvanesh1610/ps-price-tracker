@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bc1f994a-38a9-40cd-a98f-d432a9380fdc" name="Changes" comment="Add PS Store Wishlist Price Tracker with GitHub Actions support&#10;&#10;- Implement price checking script (check_prices.py) to monitor wishlist games&#10;- Schedule checks via GitHub Actions (check-prices.yml) twice daily&#10;- Create .gitignore to exclude unnecessary files&#10;- Add sample game URLs in games.txt&#10;- Update README.md with setup instructions and usage details" />
+    <list default="true" id="bc1f994a-38a9-40cd-a98f-d432a9380fdc" name="Changes" comment="Refactor price extraction logic to use HTML parsing and regex" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -13,27 +13,28 @@
   <component name="CopilotPersistence">
     <persistenceIdMap>
       <entry key="_C:/Users/Bhuvanesh/Downloads/ps-price-tracker/ps-price-tracker" value="3HgfUINPVO59QL2pB1ewpUijkmh" />
+      <entry key="_C:/Workspace/New folder/ps-price-tracker" value="3Hhyc34gRTT3m3DIEGAYitt6ULk" />
     </persistenceIdMap>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "Bhuvanesh-1610"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Bhuvanesh-1610&quot;
   }
-}]]></component>
+}</component>
   <component name="GithubPullRequestsUISettings"><![CDATA[{
   "selectedUrlAndAccountId": {
     "url": "https://github.com/Bhuvanesh1610/ps-price-tracker.git",
-    "accountId": "1ae58cbb-95fa-4d46-968f-440609ba1936"
+    "accountId": "b92584f0-e3f5-422a-a307-0a78af50451d"
   }
 }]]></component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 2,
-  "fromUser": false
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2,
+  &quot;fromUser&quot;: false
+}</component>
   <component name="ProjectId" id="3HgfUINPVO59QL2pB1ewpUijkmh" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -43,27 +44,29 @@
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
     "copilot.chat.legacySessionMetadata.migrated": "true",
-    "git-widget-placeholder": "master",
+    "git-widget-placeholder": "main",
     "junie.onboarding.icon.badge.shown": "true",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Users/Bhuvanesh/Downloads/ps-price-tracker/ps-price-tracker",
+    "last_opened_file_path": "C:/Workspace/New folder/ps-price-tracker",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "to.speed.mode.migration.done": "true"
+    "to.speed.mode.migration.done": "true",
+    "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-jdk-30f59d01ecdd-63390994e64e-intellij.indexing.shared.core-IU-262.8665.337" />
-        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-IU-262.8665.337" />
+        <option value="bundled-jdk-30f59d01ecdd-2fc7cc6b9a17-intellij.indexing.shared.core-IU-253.30387.90" />
+        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-IU-253.30387.90" />
       </set>
     </attachedChunks>
   </component>
@@ -74,7 +77,17 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1786294646632</updated>
+      <workItem from="1786334673686" duration="402000" />
     </task>
+    <task id="LOCAL-00001" summary="Refactor price extraction logic to use HTML parsing and regex">
+      <option name="closed" value="true" />
+      <created>1786334709938</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1786334709938</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -82,6 +95,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Add PS Store Wishlist Price Tracker with GitHub Actions support&#10;&#10;- Implement price checking script (check_prices.py) to monitor wishlist games&#10;- Schedule checks via GitHub Actions (check-prices.yml) twice daily&#10;- Create .gitignore to exclude unnecessary files&#10;- Add sample game URLs in games.txt&#10;- Update README.md with setup instructions and usage details" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add PS Store Wishlist Price Tracker with GitHub Actions support&#10;&#10;- Implement price checking script (check_prices.py) to monitor wishlist games&#10;- Schedule checks via GitHub Actions (check-prices.yml) twice daily&#10;- Create .gitignore to exclude unnecessary files&#10;- Add sample game URLs in games.txt&#10;- Update README.md with setup instructions and usage details" />
+    <MESSAGE value="Refactor price extraction logic to use HTML parsing and regex" />
+    <option name="LAST_COMMIT_MESSAGE" value="Refactor price extraction logic to use HTML parsing and regex" />
   </component>
 </project>
