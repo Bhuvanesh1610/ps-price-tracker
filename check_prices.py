@@ -79,19 +79,30 @@ def fetch_game_info(url):
 
     base = discounted = None
 
+    # Discounted case: "Rs 973Discounted from original price of Rs 3,246Rs 3,246"
+    # -> discounted price appears BEFORE the phrase, original price AFTER it.
     m = re.search(
-        r"Discounted from original price of\s*(?:Rs\.?|₹)\s?([\d,]+)\s*(?:Rs\.?|₹)\s?([\d,]+)",
+        r"(?:Rs\.?|₹)\s?([\d,]+)Discounted from original price of\s*(?:Rs\.?|₹)\s?([\d,]+)",
         page_text,
     )
     if m:
-        base = parse_price_string(m.group(1))
-        discounted = parse_price_string(m.group(2))
+        discounted = parse_price_string(m.group(1))
+        base = parse_price_string(m.group(2))
     else:
-        # Not on sale (or free/subscription-only) - grab the first plain price
+        # Not on sale - just a single plain price shown, e.g. "Rs 2,499"
         m2 = re.search(r"(?:Rs\.?|₹)\s?([\d,]+)", page_text)
         if m2:
             discounted = parse_price_string(m2.group(1))
             base = discounted
+
+    # --- TEMPORARY DEBUG: helps diagnose why some sales aren't detected ---
+    has_phrase = "Discounted from original price" in page_text
+    print(f"    [debug] response_len={len(resp.text)} discount_phrase_present={has_phrase}")
+    if has_phrase:
+        idx = page_text.find("Discounted from original price")
+        snippet = page_text[max(0, idx - 40): idx + 80]
+        print(f"    [debug] snippet: ...{snippet}...")
+    # --- END DEBUG ---
 
     if discounted is None:
         print(f"[ERROR] Could not extract price for {url}")
