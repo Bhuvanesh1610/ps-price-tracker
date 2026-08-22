@@ -7,6 +7,59 @@ a Telegram message when a game:
 
 Runs entirely for free on GitHub Actions — no server, no laptop needed.
 
+## Cloudflare wishlist site
+
+The repository now includes a small Cloudflare Worker + D1 (SQLite) app. It
+provides a browser page to view, add, and remove wishlist games. D1's free
+tier is enough for this small list, and the scheduled runner reads the live
+list from the API on every CI run.
+
+### One-time Cloudflare setup
+
+1. Install Wrangler and log in:
+   ```
+   npm.cmd install -g wrangler
+   wrangler.cmd login
+   ```
+2. Create the free D1 database:
+   ```
+   wrangler.cmd d1 create ps-price-tracker
+   ```
+3. Copy the returned `database_id` into `wrangler.toml`, replacing
+   `REPLACE_WITH_D1_DATABASE_ID`.
+4. Set a private admin token locally:
+   ```
+   wrangler.cmd secret put ADMIN_TOKEN
+   ```
+5. Apply the schema and deploy once:
+   ```
+   wrangler.cmd d1 migrations apply ps-price-tracker --remote
+   wrangler.cmd deploy
+   ```
+
+On Windows PowerShell, use the `.cmd` suffix because the system execution
+policy may block `npm.ps1` and `npx.ps1`. The repository also includes
+`npm.cmd run dev`, `npm.cmd run migrate`, and `npm.cmd run deploy` scripts.
+
+The deployment URL printed by Wrangler is the wishlist page. The page asks
+for `ADMIN_TOKEN` only when adding or removing games. A GET of `/api/games` is
+public so GitHub Actions can read it without exposing a write credential.
+
+### GitHub Actions secrets
+
+Add these under **Settings -> Secrets and variables -> Actions**:
+
+| Name | Value |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token with Workers edit and D1 edit permissions |
+| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID |
+| `ADMIN_TOKEN` | The same token used by the wishlist page |
+| `WISHLIST_API_URL` | Deployment URL followed by `/api/games` |
+
+Pushes to `main` run `.github/workflows/deploy.yml`. The deploy job applies
+new D1 migrations, updates the Worker secret, and publishes the site. The
+existing `check-prices.yml` schedule then reads games added through the page.
+
 ## 1. Create the GitHub repo
 
 1. Go to [github.com/new](https://github.com/new), create a **private** repo
@@ -56,9 +109,10 @@ inactivity — just re-run it manually if that happens).
 
 ## Managing your game list
 
-Add or remove PS Store product links in `games.txt`, one per line. Get a
-link by opening the game's PS Store page and copying the URL — it should
-look like:
+Use the deployed wishlist page to add games or remove games you have bought.
+The runner reads that live D1 list whenever the scheduled or manual workflow
+starts. For local runs without `WISHLIST_API_URL`, the runner still reads
+`games.txt`. A PS Store URL should look like:
 ```
 https://store.playstation.com/en-in/product/EP0102-PPSA01557_00-VILLAGEFULLGAMEX
 ```

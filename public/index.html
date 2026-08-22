@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wishlist | PS Price Tracker</title>
+  <style>
+    :root { --ink:#20252b; --muted:#6c737b; --paper:#f7f5ef; --line:#d9d6ce; --accent:#d64b35; --accent-dark:#a83224; }
+    * { box-sizing:border-box; } body { margin:0; color:var(--ink); background:var(--paper); font:16px Georgia, serif; }
+    main { max-width:900px; margin:0 auto; padding:56px 22px 72px; }
+    header { border-bottom:2px solid var(--ink); padding-bottom:24px; margin-bottom:28px; display:flex; justify-content:space-between; gap:20px; align-items:end; }
+    h1 { font:700 clamp(2.2rem, 6vw, 4.5rem)/.95 Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; letter-spacing:0; margin:0; text-transform:uppercase; }
+    .eyebrow { color:var(--accent); font:700 12px/1.2 Arial, sans-serif; letter-spacing:1.5px; text-transform:uppercase; margin:0 0 8px; }
+    .count { color:var(--muted); font:13px Arial, sans-serif; white-space:nowrap; }
+    form { display:grid; grid-template-columns:1fr 190px auto; gap:10px; margin-bottom:28px; }
+    input, button { min-height:46px; border:1px solid var(--line); padding:0 14px; font:15px Arial, sans-serif; }
+    input { background:#fff; } button { cursor:pointer; background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; } button:hover { background:var(--accent-dark); }
+    .status { color:var(--muted); min-height:22px; font:13px Arial, sans-serif; margin:0 0 12px; }
+    .games { border-top:1px solid var(--line); } .game { display:grid; grid-template-columns:48px 1fr auto; gap:16px; align-items:center; border-bottom:1px solid var(--line); padding:18px 0; }
+    .number { color:var(--accent); font:700 25px Impact, sans-serif; } .title { font-size:20px; margin:0 0 5px; } .url { color:var(--muted); font:12px Arial, sans-serif; overflow-wrap:anywhere; }
+    .remove { background:transparent; border:0; color:var(--muted); min-height:auto; padding:8px; } .remove:hover { color:var(--accent); background:transparent; }
+    .empty { color:var(--muted); padding:30px 0; } @media (max-width:650px) { form { grid-template-columns:1fr; } header { align-items:start; flex-direction:column; } .game { grid-template-columns:32px 1fr auto; gap:10px; } .title { font-size:17px; } }
+  </style>
+</head>
+<body><main>
+  <header><div><p class="eyebrow">PlayStation Store / watchlist</p><h1>Wishlist</h1></div><div class="count" id="count"></div></header>
+  <form id="add-form"><input id="title" placeholder="Game title (optional)" aria-label="Game title"><input id="url" type="url" placeholder="https://store.playstation.com/..." aria-label="PlayStation Store URL" required><button type="submit">Add game</button></form>
+  <p class="status" id="status" role="status"></p><section class="games" id="games"></section>
+  <script>
+    const gamesEl = document.querySelector('#games'), statusEl = document.querySelector('#status'), countEl = document.querySelector('#count');
+    let adminToken = '';
+    function auth() { if (!adminToken) adminToken = window.prompt('Enter your wishlist admin token') || ''; return adminToken ? { Authorization: `Bearer ${adminToken}` } : {}; }
+    function render(games) { countEl.textContent = `${games.length} ${games.length === 1 ? 'game' : 'games'}`; gamesEl.innerHTML = games.length ? games.map((game, i) => `<article class="game"><div class="number">${String(i + 1).padStart(2, '0')}</div><div><p class="title">${escapeHtml(game.title || 'Untitled game')}</p><a class="url" href="${escapeHtml(game.url)}" target="_blank" rel="noreferrer">${escapeHtml(game.url)}</a></div><button class="remove" data-id="${game.id}" title="Remove game" aria-label="Remove game">Remove</button></article>`).join('') : '<p class="empty">Your wishlist is empty.</p>'; }
+    function escapeHtml(value) { const div = document.createElement('div'); div.textContent = value; return div.innerHTML; }
+    async function load() { const response = await fetch('/api/games'); const data = await response.json(); if (!response.ok) throw Error(data.error); render(data.games); }
+    document.querySelector('#add-form').addEventListener('submit', async event => { event.preventDefault(); statusEl.textContent = 'Adding...'; const body = { title: document.querySelector('#title').value, url: document.querySelector('#url').value }; const response = await fetch('/api/games', { method:'POST', headers:{'content-type':'application/json', ...auth()}, body:JSON.stringify(body) }); const data = await response.json(); if (response.status === 401) { adminToken = ''; statusEl.textContent = 'Admin token required.'; return; } if (!response.ok) { statusEl.textContent = data.error; return; } event.target.reset(); render(data.games); statusEl.textContent = 'Added.'; });
+    gamesEl.addEventListener('click', async event => { const button = event.target.closest('[data-id]'); if (!button) return; button.disabled = true; const response = await fetch(`/api/games/${button.dataset.id}`, { method:'DELETE', headers:auth() }); const data = await response.json(); if (response.status === 401) { adminToken = ''; statusEl.textContent = 'Admin token required.'; button.disabled = false; return; } if (!response.ok) { statusEl.textContent = data.error; return; } render(data.games); statusEl.textContent = 'Removed.'; });
+    load().catch(error => { statusEl.textContent = error.message; });
+  </script>
+</main></body></html>

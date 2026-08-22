@@ -31,6 +31,19 @@ HEADERS = {
 
 
 def load_urls(path):
+    wishlist_api_url = os.environ.get("WISHLIST_API_URL")
+    if wishlist_api_url:
+        try:
+            response = requests.get(wishlist_api_url, timeout=REQUEST_TIMEOUT)
+            response.raise_for_status()
+            games = response.json().get("games", [])
+            urls = [game["url"] for game in games if game.get("url")]
+            print(f"Loaded {len(urls)} active games from wishlist API.")
+            return urls
+        except (requests.RequestException, ValueError, TypeError, KeyError) as e:
+            print(f"[ERROR] Wishlist API fetch failed: {e}")
+            return []
+
     with open(path, "r", encoding="utf-8") as f:
         return [line.strip() for line in f if line.strip() and not line.startswith("#")]
 

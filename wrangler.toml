@@ -1,0 +1,13 @@
+name = "ps-price-tracker"
+main = "src/worker.js"
+compatibility_date = "2026-08-22"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ps-price-tracker"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"

@@ -1,0 +1,15 @@
+{
+  "name": "ps-price-tracker",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "migrate": "wrangler d1 migrations apply ps-price-tracker --remote",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.125.0"
+  }
+}
