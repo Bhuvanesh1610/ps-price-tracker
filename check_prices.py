@@ -58,6 +58,28 @@ def source_for_url(url):
     return "playstation"
 
 
+def save_game_info(game, info):
+    api_url = os.environ.get("WISHLIST_API_URL")
+    api_token = os.environ.get("WISHLIST_API_TOKEN") or os.environ.get("ADMIN_TOKEN")
+    if not api_url or not game.get("id") or not api_token:
+        return
+    try:
+        response = requests.patch(
+            f"{api_url.rstrip('/')}/{game['id']}",
+            headers={"Authorization": f"Bearer {api_token}"},
+            json={
+                "title": info["title"],
+                "base_price": info["base"],
+                "discounted_price": info["discounted"],
+                "discount_pct": info["discount_pct"],
+            },
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"[ERROR] Could not save result for {game['url']}: {e}")
+
+
 def parse_price_string(value):
     """Convert '₹2,499' / 'Rs 2,499' / 2499 -> 2499.0 (float). Returns None if not parseable."""
     if value is None:
@@ -219,6 +241,7 @@ def main():
         if info is None:
             failures.append(game["url"])
         else:
+            save_game_info(game, info)
             hit_price = info["discounted"] < RS_THRESHOLD
             hit_discount = info["discount_pct"] >= DISCOUNT_THRESHOLD
             if hit_price or hit_discount:

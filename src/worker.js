@@ -10,7 +10,7 @@ function authorized(request, env) {
 
 async function listGames(env) {
   const { results } = await env.DB.prepare(
-    "SELECT id, url, title, source, added_at FROM games ORDER BY added_at DESC"
+    "SELECT id, url, title, source, base_price, discounted_price, discount_pct, checked_at, added_at FROM games ORDER BY added_at DESC"
   ).all();
   return results;
 }
@@ -48,6 +48,21 @@ async function api(request, env, url) {
   }
 
   const match = url.pathname.match(/^\/api\/games\/(\d+)$/);
+  if (match && request.method === "PATCH") {
+    const body = await request.json().catch(() => null);
+    const title = typeof body?.title === "string" ? body.title.trim() : "";
+    const basePrice = Number(body?.base_price);
+    const discountedPrice = Number(body?.discounted_price);
+    const discountPct = Number(body?.discount_pct);
+    if (!title || !Number.isFinite(basePrice) || !Number.isFinite(discountedPrice) || !Number.isFinite(discountPct)) {
+      return json({ error: "Invalid price data." }, 400);
+    }
+    await env.DB.prepare(
+      "UPDATE games SET title = ?, base_price = ?, discounted_price = ?, discount_pct = ?, checked_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ).bind(title, basePrice, discountedPrice, discountPct, match[1]).run();
+    return json({ games: await listGames(env) });
+  }
+
   if (match && request.method === "DELETE") {
     await env.DB.prepare("DELETE FROM games WHERE id = ?").bind(match[1]).run();
     return json({ games: await listGames(env) });
