@@ -10,7 +10,7 @@ function authorized(request, env) {
 
 async function listGames(env) {
   const { results } = await env.DB.prepare(
-    "SELECT id, url, title, added_at FROM games ORDER BY added_at DESC"
+    "SELECT id, url, title, source, added_at FROM games ORDER BY added_at DESC"
   ).all();
   return results;
 }
@@ -26,12 +26,18 @@ async function api(request, env, url) {
     const body = await request.json().catch(() => null);
     const gameUrl = typeof body?.url === "string" ? body.url.trim() : "";
     const title = typeof body?.title === "string" ? body.title.trim() : "";
-    if (!gameUrl || !/^https:\/\/store\.playstation\.com\//i.test(gameUrl)) {
-      return json({ error: "A valid PlayStation Store URL is required." }, 400);
+    const source = typeof body?.source === "string" ? body.source.trim().toLowerCase() : "";
+    const domains = {
+      playstation: /^https:\/\/store\.playstation\.com\//i,
+      flipkart: /^https:\/\/(?:www\.)?flipkart\.com\//i,
+      amazon: /^https:\/\/(?:www\.)?amazon\.(?:in|com)\//i,
+    };
+    if (!domains[source] || !domains[source].test(gameUrl)) {
+      return json({ error: "Choose a marketplace and enter a valid product URL." }, 400);
     }
     try {
-      await env.DB.prepare("INSERT INTO games (url, title) VALUES (?, ?)")
-        .bind(gameUrl, title).run();
+      await env.DB.prepare("INSERT INTO games (url, title, source) VALUES (?, ?, ?)")
+        .bind(gameUrl, title, source).run();
     } catch (error) {
       if (String(error).toLowerCase().includes("unique")) {
         return json({ error: "That game is already on the wishlist." }, 409);

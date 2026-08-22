@@ -10,7 +10,8 @@ Runs entirely for free on GitHub Actions — no server, no laptop needed.
 ## Cloudflare wishlist site
 
 The repository now includes a small Cloudflare Worker + D1 (SQLite) app. It
-provides a browser page to view, add, and remove wishlist games. D1's free
+provides a browser page with PlayStation, Flipkart, and Amazon tabs to view,
+add, and remove wishlist games. D1's free
 tier is enough for this small list, and the scheduled runner reads the live
 list from the API on every CI run.
 
@@ -47,6 +48,9 @@ policy may block `npm.ps1` and `npx.ps1`. The repository also includes
 The deployment URL printed by Wrangler is the wishlist page. The page asks
 for `ADMIN_TOKEN` only when adding or removing games. A GET of `/api/games` is
 public so GitHub Actions can read it without exposing a write credential.
+Each alert includes the marketplace tab and product URL used to calculate the
+discount. Amazon and Flipkart may block automated requests or render prices
+with JavaScript; those games will be logged as fetch/price parsing failures.
 
 ### GitHub Actions secrets
 

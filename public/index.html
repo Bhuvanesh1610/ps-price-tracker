@@ -12,28 +12,34 @@
     h1 { font:700 clamp(2.2rem, 6vw, 4.5rem)/.95 Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; letter-spacing:0; margin:0; text-transform:uppercase; }
     .eyebrow { color:var(--accent); font:700 12px/1.2 Arial, sans-serif; letter-spacing:1.5px; text-transform:uppercase; margin:0 0 8px; }
     .count { color:var(--muted); font:13px Arial, sans-serif; white-space:nowrap; }
+    .tabs { display:flex; gap:8px; border-bottom:1px solid var(--line); margin-bottom:18px; }
+    .tab { background:transparent; border:0; border-bottom:3px solid transparent; color:var(--muted); min-height:40px; padding:0 8px; }
+    .tab.active { border-bottom-color:var(--accent); color:var(--ink); }
     form { display:grid; grid-template-columns:1fr 190px auto; gap:10px; margin-bottom:28px; }
     input, button { min-height:46px; border:1px solid var(--line); padding:0 14px; font:15px Arial, sans-serif; }
     input { background:#fff; } button { cursor:pointer; background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; } button:hover { background:var(--accent-dark); }
     .status { color:var(--muted); min-height:22px; font:13px Arial, sans-serif; margin:0 0 12px; }
     .games { border-top:1px solid var(--line); } .game { display:grid; grid-template-columns:48px 1fr auto; gap:16px; align-items:center; border-bottom:1px solid var(--line); padding:18px 0; }
-    .number { color:var(--accent); font:700 25px Impact, sans-serif; } .title { font-size:20px; margin:0 0 5px; } .url { color:var(--muted); font:12px Arial, sans-serif; overflow-wrap:anywhere; }
+    .number { color:var(--accent); font:700 25px Impact, sans-serif; } .title { font-size:20px; margin:0 0 5px; } .source { color:var(--accent); font:700 11px Arial, sans-serif; text-transform:uppercase; } .url { color:var(--muted); font:12px Arial, sans-serif; overflow-wrap:anywhere; }
     .remove { background:transparent; border:0; color:var(--muted); min-height:auto; padding:8px; } .remove:hover { color:var(--accent); background:transparent; }
     .empty { color:var(--muted); padding:30px 0; } @media (max-width:650px) { form { grid-template-columns:1fr; } header { align-items:start; flex-direction:column; } .game { grid-template-columns:32px 1fr auto; gap:10px; } .title { font-size:17px; } }
   </style>
 </head>
 <body><main>
   <header><div><p class="eyebrow">PlayStation Store / watchlist</p><h1>Wishlist</h1></div><div class="count" id="count"></div></header>
-  <form id="add-form"><input id="title" placeholder="Game title (optional)" aria-label="Game title"><input id="url" type="url" placeholder="https://store.playstation.com/..." aria-label="PlayStation Store URL" required><button type="submit">Add game</button></form>
+  <nav class="tabs" aria-label="Marketplace"><button class="tab active" data-source="playstation" type="button">PlayStation</button><button class="tab" data-source="flipkart" type="button">Flipkart</button><button class="tab" data-source="amazon" type="button">Amazon</button></nav>
+  <form id="add-form"><input id="title" placeholder="Game title (optional)" aria-label="Game title"><input id="url" type="url" placeholder="https://store.playstation.com/..." aria-label="Product URL" required><button type="submit">Add game</button></form>
   <p class="status" id="status" role="status"></p><section class="games" id="games"></section>
   <script>
     const gamesEl = document.querySelector('#games'), statusEl = document.querySelector('#status'), countEl = document.querySelector('#count');
+    let selectedSource = 'playstation';
     let adminToken = '';
     function auth() { if (!adminToken) adminToken = window.prompt('Enter your wishlist admin token') || ''; return adminToken ? { Authorization: `Bearer ${adminToken}` } : {}; }
-    function render(games) { countEl.textContent = `${games.length} ${games.length === 1 ? 'game' : 'games'}`; gamesEl.innerHTML = games.length ? games.map((game, i) => `<article class="game"><div class="number">${String(i + 1).padStart(2, '0')}</div><div><p class="title">${escapeHtml(game.title || 'Untitled game')}</p><a class="url" href="${escapeHtml(game.url)}" target="_blank" rel="noreferrer">${escapeHtml(game.url)}</a></div><button class="remove" data-id="${game.id}" title="Remove game" aria-label="Remove game">Remove</button></article>`).join('') : '<p class="empty">Your wishlist is empty.</p>'; }
+    function render(games) { const visible = games.filter(game => (game.source || 'playstation') === selectedSource); countEl.textContent = `${visible.length} ${visible.length === 1 ? 'game' : 'games'}`; gamesEl.innerHTML = visible.length ? visible.map((game, i) => `<article class="game"><div class="number">${String(i + 1).padStart(2, '0')}</div><div><div class="source">${escapeHtml(game.source || 'playstation')}</div><p class="title">${escapeHtml(game.title || 'Untitled game')}</p><a class="url" href="${escapeHtml(game.url)}" target="_blank" rel="noreferrer">${escapeHtml(game.url)}</a></div><button class="remove" data-id="${game.id}" title="Remove game" aria-label="Remove game">Remove</button></article>`).join('') : '<p class="empty">No games saved in this tab.</p>'; }
     function escapeHtml(value) { const div = document.createElement('div'); div.textContent = value; return div.innerHTML; }
     async function load() { const response = await fetch('/api/games'); const data = await response.json(); if (!response.ok) throw Error(data.error); render(data.games); }
-    document.querySelector('#add-form').addEventListener('submit', async event => { event.preventDefault(); statusEl.textContent = 'Adding...'; const body = { title: document.querySelector('#title').value, url: document.querySelector('#url').value }; const response = await fetch('/api/games', { method:'POST', headers:{'content-type':'application/json', ...auth()}, body:JSON.stringify(body) }); const data = await response.json(); if (response.status === 401) { adminToken = ''; statusEl.textContent = 'Admin token required.'; return; } if (!response.ok) { statusEl.textContent = data.error; return; } event.target.reset(); render(data.games); statusEl.textContent = 'Added.'; });
+    document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => { selectedSource = tab.dataset.source; document.querySelectorAll('.tab').forEach(item => item.classList.toggle('active', item === tab)); load(); }));
+    document.querySelector('#add-form').addEventListener('submit', async event => { event.preventDefault(); statusEl.textContent = 'Adding...'; const body = { title: document.querySelector('#title').value, url: document.querySelector('#url').value, source: selectedSource }; const response = await fetch('/api/games', { method:'POST', headers:{'content-type':'application/json', ...auth()}, body:JSON.stringify(body) }); const data = await response.json(); if (response.status === 401) { adminToken = ''; statusEl.textContent = 'Admin token required.'; return; } if (!response.ok) { statusEl.textContent = data.error; return; } event.target.reset(); render(data.games); statusEl.textContent = 'Added.'; });
     gamesEl.addEventListener('click', async event => { const button = event.target.closest('[data-id]'); if (!button) return; button.disabled = true; const response = await fetch(`/api/games/${button.dataset.id}`, { method:'DELETE', headers:auth() }); const data = await response.json(); if (response.status === 401) { adminToken = ''; statusEl.textContent = 'Admin token required.'; button.disabled = false; return; } if (!response.ok) { statusEl.textContent = data.error; return; } render(data.games); statusEl.textContent = 'Removed.'; });
     load().catch(error => { statusEl.textContent = error.message; });
   </script>

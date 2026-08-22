@@ -1,8 +1,8 @@
 """
 PS Store Wishlist Price Checker
 --------------------------------
-Reads game URLs from games.txt, fetches the current price for each from
-the PS Store, and sends a Telegram alert for any game that:
+Reads game URLs from games.txt or the wishlist API, fetches prices from
+PlayStation Store, Flipkart, or Amazon, and sends a Telegram alert for any game that:
   - has a discounted price below RS_THRESHOLD, OR
   - has a discount percentage >= DISCOUNT_THRESHOLD
 
@@ -15,6 +15,7 @@ import re
 import html
 import sys
 import time
+from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 
@@ -30,22 +31,31 @@ HEADERS = {
 }
 
 
-def load_urls(path):
+def load_games(path):
     wishlist_api_url = os.environ.get("WISHLIST_API_URL")
     if wishlist_api_url:
         try:
             response = requests.get(wishlist_api_url, timeout=REQUEST_TIMEOUT)
             response.raise_for_status()
             games = response.json().get("games", [])
-            urls = [game["url"] for game in games if game.get("url")]
-            print(f"Loaded {len(urls)} active games from wishlist API.")
-            return urls
+            games = [game for game in games if game.get("url")]
+            print(f"Loaded {len(games)} active games from wishlist API.")
+            return games
         except (requests.RequestException, ValueError, TypeError, KeyError) as e:
             print(f"[ERROR] Wishlist API fetch failed: {e}")
             return []
 
     with open(path, "r", encoding="utf-8") as f:
-        return [line.strip() for line in f if line.strip() and not line.startswith("#")]
+        return [{"url": line.strip(), "source": "playstation"} for line in f if line.strip() and not line.startswith("#")]
+
+
+def source_for_url(url):
+    host = urlparse(url).netloc.lower()
+    if "flipkart.com" in host:
+        return "flipkart"
+    if "amazon." in host:
+        return "amazon"
+    return "playstation"
 
 
 def parse_price_string(value):
@@ -72,8 +82,10 @@ def get_title(soup):
     return "Unknown Game"
 
 
-def fetch_game_info(url):
-    """Returns dict with title/base/discounted/discount_pct, or None on failure."""
+def fetch_game_info(game):
+    """Return title, source, prices, and evidence URL, or None on failure."""
+    url = game["url"]
+    source = game.get("source") or source_for_url(url)
     try:
         resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
@@ -83,6 +95,24 @@ def fetch_game_info(url):
 
     soup = BeautifulSoup(resp.text, "html.parser")
     title = get_title(soup)
+
+    if source in ("flipkart", "amazon"):
+        prices = []
+        for selector in ('meta[property="product:price:amount"]', 'meta[itemprop="price"]'):
+            element = soup.select_one(selector)
+            if element and element.get("content"):
+                prices.append(parse_price_string(element["content"]))
+        page_text = soup.get_text(separator=" ", strip=True)
+        matches = re.findall(r"(?:₹|Rs\.?|INR)\s?([\d,]+(?:\.\d{1,2})?)", page_text, re.I)
+        prices.extend(parse_price_string(value) for value in matches)
+        prices = [price for price in prices if price is not None]
+        if not prices:
+            print(f"[ERROR] Could not extract {source} price for {url}")
+            return None
+        discounted = prices[0]
+        base = prices[1] if len(prices) > 1 and prices[1] >= discounted else discounted
+        return {"url": url, "title": title, "source": source, "base": base,
+                "discounted": discounted, "discount_pct": round((1 - discounted / base) * 100) if base else 0}
 
     page_text = soup.get_text(separator=" ", strip=True)
 
@@ -131,6 +161,7 @@ def fetch_game_info(url):
     return {
         "url": url,
         "title": title,
+        "source": source,
         "base": base,
         "discounted": discounted,
         "discount_pct": discount_pct,
@@ -169,6 +200,7 @@ def format_deal_line(info):
     safe_title = html.escape(info["title"])
     return (
         f"🎮 <b>{safe_title}</b>\n"
+        f"   Source: <b>{html.escape(info['source'].title())}</b>\n"
         f"   Actual: ₹{info['base']:,.0f}  |  Now: ₹{info['discounted']:,.0f}  "
         f"({info['discount_pct']}% off)\n"
         f"   {info['url']}"
@@ -176,16 +208,16 @@ def format_deal_line(info):
 
 
 def main():
-    urls = load_urls(GAMES_FILE)
-    print(f"Checking {len(urls)} games...")
+    games = load_games(GAMES_FILE)
+    print(f"Checking {len(games)} games...")
 
     deals = []
     failures = []
 
-    for i, url in enumerate(urls, 1):
-        info = fetch_game_info(url)
+    for i, game in enumerate(games, 1):
+        info = fetch_game_info(game)
         if info is None:
-            failures.append(url)
+            failures.append(game["url"])
         else:
             hit_price = info["discounted"] < RS_THRESHOLD
             hit_discount = info["discount_pct"] >= DISCOUNT_THRESHOLD
@@ -209,7 +241,7 @@ def main():
         print("No deals found this run.")
 
     # If every single game failed to parse, the site structure likely changed - flag it
-    if failures and len(failures) == len(urls):
+    if failures and len(failures) == len(games):
         send_telegram_message(
             "⚠️ PS Store price checker: ALL games failed to fetch this run. "
             "The script may need updating (PS Store page structure may have changed)."
