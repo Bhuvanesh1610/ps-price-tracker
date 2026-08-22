@@ -21,17 +21,20 @@ list from the API on every CI run.
    npm.cmd install -g wrangler
    wrangler.cmd login
    ```
-2. Create the free D1 database:
+2. Register a free `workers.dev` subdomain in Cloudflare by opening the
+   Workers onboarding page shown in the failed action, then choose a subdomain
+   and confirm registration. GitHub Actions cannot answer this prompt.
+3. Create the free D1 database:
    ```
    wrangler.cmd d1 create ps-price-tracker
    ```
-3. Copy the returned `database_id` into `wrangler.toml`, replacing
+4. Copy the returned `database_id` into `wrangler.toml`, replacing
    `REPLACE_WITH_D1_DATABASE_ID`.
-4. Set a private admin token locally:
+5. Set a private admin token locally:
    ```
    wrangler.cmd secret put ADMIN_TOKEN
    ```
-5. Apply the schema and deploy once:
+6. Apply the schema and deploy once:
    ```
    wrangler.cmd d1 migrations apply ps-price-tracker --remote
    wrangler.cmd deploy
