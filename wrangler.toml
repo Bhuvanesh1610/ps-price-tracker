@@ -9,5 +9,5 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "ps-price-tracker"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "fe6b9f5f-ad5f-40a0-984a-668d6bf570a9"
 migrations_dir = "migrations"
