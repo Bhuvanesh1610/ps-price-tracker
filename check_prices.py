@@ -247,7 +247,7 @@ def main():
             if hit_price or hit_discount:
                 deals.append(info)
             print(
-                f"[{i}/{len(urls)}] {info['title']}: "
+                f"[{i}/{len(games)}] {info['title']}: "
                 f"₹{info['discounted']:.0f} ({info['discount_pct']}% off) "
                 f"{'-> ALERT' if (hit_price or hit_discount) else ''}"
             )
